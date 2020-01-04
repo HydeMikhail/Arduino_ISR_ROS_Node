@@ -51,12 +51,12 @@ the next position.
 
 #define NumSteppers         4     //Number of Steppers in System
 
-#include <ros.h>
-#include <motor_control/motorSteps.h>
+#include "ros.h"
+#include "motor_control/motorSteps.h"
 
-ros::NodeHandle  node;
+ros::NodeHandle node;
 
-void messageCb(motor_control::motorSteps &msg){     /* Defines Goal For Each MotorPose Step Publication */
+void messageCb(motor_control::motorSteps& msg){     /* Defines Goal For Each MotorPose Step Publication */
   prepareMovement(0, msg.baseStep);
   prepareMovement(1, msg.mainStep);
   prepareMovement(2, msg.secStep);
@@ -64,7 +64,7 @@ void messageCb(motor_control::motorSteps &msg){     /* Defines Goal For Each Mot
   runAndWait();
 }
 
-ros::Subscriber<motor_control::motorSteps> poseSub("motorPoseSteps", &messageCb );
+ros::Subscriber<motor_control::motorSteps> poseSub("motorPoseSteps", &messageCb);
 
 struct stepperInfo {
   // externally defined parameters
@@ -93,6 +93,8 @@ struct stepperInfo {
   volatile unsigned long di;               // above variable truncated
   volatile unsigned int stepCount;         // number of steps completed in current movement
 };
+
+volatile stepperInfo steppers[NumSteppers];
 
 void baseStep(){                        //Base Step Function
     baseStepH
@@ -130,7 +132,7 @@ void toolDir(int dir){                  //Tool Direction Function
     digitalWrite(toolDirPin, dir);
 }
 
-void resetStepperInfo( stepperInfo& si ) {
+void resetStepperInfo(struct stepperInfo& si) {
   si.n = 0;
   si.d = 0;
   si.di = 0;
@@ -141,8 +143,6 @@ void resetStepperInfo( stepperInfo& si ) {
   si.stepPosition = 0;
   si.movementDone = false;
 }
-
-volatile stepperInfo steppers[NumSteppers];
 
 void setup() {
 
@@ -166,31 +166,6 @@ void setup() {
   digitalWrite(resolutionR1, LOW);
   digitalWrite(resolutionR2, HIGH);
 
-  //Assigning Step and Dir functions to Stepper List
-  steppers[0].dirFunc             = baseDir;
-  steppers[0].stepFunc            = baseStep;
-  steppers[0].currentPosition     = 0;
-  steppers[0].previousPosition    = 0;
-  steppers[0].goalPosition        = 0;
-
-  steppers[1].dirFunc             = mainDir;
-  steppers[1].stepFunc            = mainStep;
-  steppers[1].currentPosition     = 0;
-  steppers[1].previousPosition    = 0;
-  steppers[1].goalPosition        = 0;
-
-  steppers[2].dirFunc             = secDir;
-  steppers[2].stepFunc            = secStep;
-  steppers[2].currentPosition     = 0;
-  steppers[2].previousPosition    = 0;
-  steppers[2].goalPosition        = 0;
-
-  steppers[3].dirFunc             = toolDir;
-  steppers[3].stepFunc            = toolStep;
-  steppers[3].currentPosition     = 0;
-  steppers[3].previousPosition    = 0;
-  steppers[3].goalPosition        = 0;}
-
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
@@ -201,23 +176,23 @@ void setup() {
   TCCR1B |= ((1 << CS11) | (1 << CS10));    // 64 prescaler
   interrupts();
 
-  steppers[0].dirFunc = bDir;
-  steppers[0].stepFunc = bStep;
+  steppers[0].dirFunc = baseDir;
+  steppers[0].stepFunc = baseStep;
   steppers[0].acceleration = 1000;
   steppers[0].minStepInterval = 50;
 
-  steppers[1].dirFunc = aDir;
-  steppers[1].stepFunc = aStep;
+  steppers[1].dirFunc = mainDir;
+  steppers[1].stepFunc = mainStep;
   steppers[1].acceleration = 1000;
   steppers[1].minStepInterval = 50;
 
-  steppers[2].dirFunc = cDir;
-  steppers[2].stepFunc = cStep;
+  steppers[2].dirFunc = secDir;
+  steppers[2].stepFunc = secStep;
   steppers[2].acceleration = 1000;
   steppers[2].minStepInterval = 50;
 
-  steppers[3].dirFunc = xDir;
-  steppers[3].stepFunc = xStep;
+  steppers[3].dirFunc = toolDir;
+  steppers[3].stepFunc = toolStep;
   steppers[3].acceleration = 1000;
   steppers[3].minStepInterval = 50;
 
@@ -225,7 +200,7 @@ void setup() {
   node.subscribe(poseSub);
 }
 
-void resetStepper(volatile stepperInfo& si) {
+void resetStepper(volatile struct stepperInfo& si) {
   si.c0 = si.acceleration;
   si.d = si.c0;
   si.di = si.d;
@@ -246,7 +221,7 @@ void resetStepper(volatile stepperInfo& si) {
 
 volatile byte remainingSteppersFlag = 0;
 
-float getDurationOfAcceleration(volatile stepperInfo& s, unsigned int numSteps) {
+float getDurationOfAcceleration(volatile struct stepperInfo& s, unsigned int numSteps) {
   float d = s.c0;
   float totalDuration = 0;
   for (unsigned int n = 1; n < numSteps; n++) {
@@ -257,7 +232,7 @@ float getDurationOfAcceleration(volatile stepperInfo& s, unsigned int numSteps) 
 }
 
 void prepareMovement(int whichMotor, long steps) {
-  volatile stepperInfo& si = steppers[whichMotor];
+  volatile struct stepperInfo& si = steppers[whichMotor];
   si.dirFunc( steps < 0 ? HIGH : LOW );
   si.dir = steps > 0 ? 1 : -1;
   si.totalSteps = abs(steps);
@@ -394,11 +369,3 @@ void adjustSpeedScales() {
 void loop() {
   node.spinOnce();
 }
-
-
-
-
-
-
-
-

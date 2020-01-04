@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/uno/src/arduino_isr/arduino_isr.cpp : src/arduino_isr/arduino_isr.ino
+	@mkdir -p .build/uno/src/arduino_isr
+	@echo [93msrc/arduino_isr/arduino_isr.ino[0m
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/uno/src/arduino_isr/arduino_isr.cpp
+	@true
+
